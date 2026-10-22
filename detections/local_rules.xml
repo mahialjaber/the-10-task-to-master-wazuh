@@ -1,0 +1,139 @@
+<!--
+  Custom Detection & Tuning Rules
+  Author: Mahi Al Jaber (github.com/mahialjaber)
+  Repository: the-10-task-to-master-wazuh
+  Location on Manager: /var/ossec/etc/rules/local_rules.xml
+-->
+
+<group name="local,custom_detection,">
+
+  <!-- ======================================================== -->
+  <!-- TASK 03: Privilege & Credential Reconnaissance Detection  -->
+  <!-- ======================================================== -->
+  <rule id="100025" level="10">
+    <description>Suspicious command execution: whoami /priv (Windows) or cat /etc/shadow (Linux)</description>
+    <regex type="pcre2">(?i)(whoami(\.exe)?\s+/priv|cat\s+/etc/shadow)</regex>
+    <mitre>
+      <id>T1033</id>
+      <id>T1003.008</id>
+    </mitre>
+  </rule>
+
+  <!-- ======================================================== -->
+  <!-- Interactive Linux Reverse Shell Detection                 -->
+  <!-- ======================================================== -->
+  <rule id="100001" level="14">
+    <if_group>syslog</if_group>
+    <match>bash -i >&amp; /dev/tcp/|nc -e /bin/bash|ncat -e /bin/sh</match>
+    <description>CRITICAL: Interactive Reverse Shell Execution Detected!</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+  </rule>
+
+</group>
+
+<group name="soc_credential_access,">
+
+  <!-- ======================================================== -->
+  <!-- Windows Brute-Force Escalation: Failures Followed by Success -->
+  <!-- ======================================================== -->
+  <rule id="100010" level="14" timeframe="300">
+    <if_sid>60106</if_sid>
+    <if_matched_sid>18153</if_matched_sid>
+    <same_source_ip />
+    <description>CRITICAL: Windows logon succeeded following multiple authentication failures from same IP</description>
+    <mitre>
+      <id>T1110</id>
+      <id>T1078</id>
+    </mitre>
+  </rule>
+
+  <!-- ======================================================== -->
+  <!-- Linux SSH Brute-Force Escalation: Failures Followed by Success -->
+  <!-- ======================================================== -->
+  <rule id="100011" level="14" timeframe="300">
+    <if_sid>5715</if_sid>
+    <if_matched_sid>5720</if_matched_sid>
+    <same_source_ip />
+    <description>CRITICAL: SSH authentication succeeded following brute-force failures from same IP</description>
+    <mitre>
+      <id>T1110</id>
+      <id>T1078</id>
+    </mitre>
+  </rule>
+
+  <!-- ======================================================== -->
+  <!-- Sysinternals PsExec Service Execution Detection          -->
+  <!-- ======================================================== -->
+  <rule id="100012" level="13">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^7045$</field>
+    <field name="win.eventdata.serviceName">^PSEXESVC$</field>
+    <description>CRITICAL: Sysinternals PsExec Service Installation Detected (PSEXESVC)</description>
+    <mitre>
+      <id>T1543.003</id>
+      <id>T1021.002</id>
+    </mitre>
+  </rule>
+
+  <!-- ======================================================== -->
+  <!-- Impacket PsExec Service Execution Detection (Randomized) -->
+  <!-- ======================================================== -->
+  <rule id="100013" level="14">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^7045$</field>
+    <field name="win.eventdata.imagePath">^%?SystemRoot%?\\([A-Za-z0-9]{4,8})\.exe$</field>
+    <description>CRITICAL: Impacket PsExec Randomized Service Binary Installation Detected</description>
+    <mitre>
+      <id>T1543.003</id>
+      <id>T1021.002</id>
+    </mitre>
+  </rule>
+
+</group>
+
+<group name="local,sshd,">
+
+  <!-- ======================================================== -->
+  <!-- Overwrite Rule 5720: Trigger at exactly 10 failed passwords -->
+  <!-- ======================================================== -->
+  <rule id="5720" level="10" frequency="10" timeframe="120" overwrite="yes">
+    <if_matched_sid>5716</if_matched_sid>
+    <same_source_ip />
+    <description>sshd: 10 failed authentication attempts from same IP (Brute Force)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,</group>
+  </rule>
+
+  <!-- ======================================================== -->
+  <!-- Overwrite Rule 5712: Trigger at exactly 10 invalid users  -->
+  <!-- ======================================================== -->
+  <rule id="5712" level="10" frequency="10" timeframe="120" overwrite="yes">
+    <if_matched_sid>5710</if_matched_sid>
+    <same_source_ip />
+    <description>sshd: 10 failed login attempts with invalid user from same IP (Brute Force)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,</group>
+  </rule>
+
+</group>
+
+<group name="ids,suricata,">
+
+  <!-- ======================================================== -->
+  <!-- TASK 10: False Positive Tuning - Noise Suppression       -->
+  <!-- Suppresses authorized ping probes from Kali test IPv6     -->
+  <!-- ======================================================== -->
+  <rule id="100060" level="0">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">^9000001$</field>
+    <field name="src_ip">^fe80:0000:0000:0000:1467:52f3:5b1b:b3f2$</field>
+    <description>Ignore Kali test ping alerts from specific IPv6</description>
+  </rule>
+
+</group>

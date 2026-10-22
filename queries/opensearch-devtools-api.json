@@ -1,0 +1,122 @@
+{
+  "description": "Production OpenSearch Dev Tools REST API queries for Vulnerability Auditing & Alert Triage",
+  "author": "Mahi Al Jaber (github.com/mahialjaber)",
+  "queries": [
+    {
+      "name": "Task 09 - Rocky Linux Highest CVSS Vulnerability Query",
+      "method": "GET",
+      "endpoint": "wazuh-states-vulnerabilities-*/_search",
+      "body": {
+        "size": 1,
+        "query": {
+          "match": {
+            "agent.name": "rhel-endpoint-01"
+          }
+        },
+        "sort": [
+          {
+            "vulnerability.score.base": {
+              "order": "desc"
+            }
+          }
+        ],
+        "_source": [
+          "vulnerability.id",
+          "vulnerability.score.base",
+          "vulnerability.package.name",
+          "agent.name"
+        ]
+      }
+    },
+    {
+      "name": "Task 09 - Windows 11 Highest CVSS Vulnerability Query",
+      "method": "GET",
+      "endpoint": "wazuh-states-vulnerabilities-*/_search",
+      "body": {
+        "size": 1,
+        "query": {
+          "match": {
+            "agent.name": "windows-vm-01"
+          }
+        },
+        "sort": [
+          {
+            "vulnerability.score.base": {
+              "order": "desc"
+            }
+          }
+        ],
+        "_source": [
+          "vulnerability.id",
+          "vulnerability.score.base",
+          "vulnerability.package.name",
+          "agent.name"
+        ]
+      }
+    },
+    {
+      "name": "Task 09 - Fleet-Wide Critical Vulnerabilities (Score >= 8.0)",
+      "method": "GET",
+      "endpoint": "wazuh-states-vulnerabilities-*/_search",
+      "body": {
+        "size": 50,
+        "query": {
+          "range": {
+            "vulnerability.score.base": {
+              "gte": 8.0
+            }
+          }
+        },
+        "sort": [
+          {
+            "vulnerability.score.base": {
+              "order": "desc"
+            }
+          }
+        ],
+        "_source": [
+          "agent.name",
+          "vulnerability.id",
+          "vulnerability.score.base",
+          "vulnerability.severity",
+          "vulnerability.package.name",
+          "vulnerability.package.version"
+        ]
+      }
+    },
+    {
+      "name": "Threat Hunting - Extract Top 10 Triggered Rules in 24 Hours",
+      "method": "GET",
+      "endpoint": "wazuh-alerts-*/_search",
+      "body": {
+        "size": 0,
+        "query": {
+          "range": {
+            "timestamp": {
+              "gte": "now-24h"
+            }
+          }
+        },
+        "aggs": {
+          "top_rules": {
+            "terms": {
+              "field": "rule.id",
+              "size": 10,
+              "order": {
+                "_count": "desc"
+              }
+            },
+            "aggs": {
+              "rule_desc": {
+                "terms": {
+                  "field": "rule.description.keyword",
+                  "size": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
